@@ -228,3 +228,8 @@ Measured on a laptop with integrated graphics, on real porphyry-copper models:
 A layer holds at most 16.7 million records (geoview warns above 10 million). For larger
 models, filter in Python first (`bm.subset(mask)`, by grade, category or region) or split
 them into several layers.
+
+## Licence
+
+MIT: free to use, modify and share, including commercially, as long as the licence
+notice is kept. See [LICENSE](LICENSE).
