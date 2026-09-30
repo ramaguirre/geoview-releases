@@ -15,7 +15,8 @@ self-contained HTML file that anyone can open without Python.
 - Hover for values, click to select; clicks come back to Python as events.
 - Leapfrog-style layers dock, colour maps, display filters, slicer and sections, clip box,
   vertical exaggeration, transparency that adds up, hole labels.
-- Reads DataFrames, CSV / Parquet / Excel tables, Leapfrog OMF (v1) and Wavefront OBJ.
+- Reads DataFrames, CSV / Parquet / Excel tables, Leapfrog OMF (v1), Wavefront OBJ, and
+  PyVista meshes, point clouds and grids (and turns layers back into PyVista objects).
 
 ## Installation
 
@@ -34,12 +35,13 @@ source geoview-env/bin/activate       # macOS / Linux
 number for other releases):
 
 ```bash
-pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.6.0/geoview-0.6.0-py3-none-any.whl"
+pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.7.0/geoview-0.7.0-py3-none-any.whl"
 ```
 
-`[textures]` adds Pillow, needed only for photo-textured meshes; leave it out if you don't
-need them. Without internet access, download the `.whl` file from the release page and run
-`pip install geoview-0.6.0-py3-none-any.whl` in its folder.
+`[textures]` adds Pillow, needed only for photo-textured meshes; `[pyvista]` adds PyVista,
+for sending layers back to PyVista (`geoview[textures,pyvista]` for both). Leave out what you
+don't need. Without internet access, download the `.whl` file from the release page and run
+`pip install geoview-0.7.0-py3-none-any.whl` in its folder.
 
 **3. Install a notebook front end**, if you don't have one:
 
@@ -117,6 +119,41 @@ shell = read_obj("pit_shell.obj")            # Wavefront OBJ
 
 Triangles are flat-shaded so every one shows. Display modes: filled, wireframe, both, and
 slicer edge.
+
+### PyVista (both ways)
+
+Anything you build in PyVista can go straight into the view, and any geoview layer can go
+back to PyVista for more processing. Every data array comes along, and coordinates stay
+float64.
+
+```python
+import pyvista as pv
+
+v.add(mesh, "wireframe")                       # PolyData surface or solid
+v.add(grid.threshold(0.5, scalars="cu"), "Cu > 0.5")   # grids and thresholded grids -> blocks
+v.add(grid.slice_orthogonal(), "slices")       # a MultiBlock adds one layer per block
+layer = geoview.from_pyvista(mesh)             # or convert explicitly
+
+bm.to_pyvista()                                # BlockModel -> UnstructuredGrid of voxels
+bm.to_pyvista(grid=True)                       # ... or a regular ImageData (NaN where no block)
+surf.to_pyvista()                              # Surface / Points -> PolyData; Drillholes -> lines
+```
+
+| PyVista | geoview |
+|---|---|
+| PolyData with polygons | `Surface` (triangulated; cell data stays per face) |
+| PolyData with lines | line segments (`Drillholes`, drawn as lines), `line` numbers each polyline |
+| PolyData with only points | `Points` |
+| ImageData, RectilinearGrid | `BlockModel`, one block per cell (point-only data is averaged to cells) |
+| UnstructuredGrid of voxels / axis-aligned hexahedra (threshold, clip...) | `BlockModel`, a size per block |
+| other grids | `Surface` of the outer boundary |
+| MultiBlock | one layer per block |
+
+Layers colour by the mesh's active scalars, as PyVista plots them. Strings and booleans
+become categories; vectors split into `_x`/`_y`/`_z`. Empty cells (all NaN) and blanked
+cells are dropped (`from_pyvista(grid, omit_empty=False)` keeps the NaN ones). Rotated grids
+are placed correctly but drawn axis-aligned (a warning says so). About 0.3 s per million
+cells either way. `to_pyvista` needs PyVista installed (`pip install "geoview[pyvista]"`).
 
 ### Leapfrog OMF
 
