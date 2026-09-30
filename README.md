@@ -14,7 +14,7 @@ self-contained HTML file that anyone can open without Python.
 - Millions of blocks stay smooth (GPU instancing; hidden blocks are skipped).
 - Hover for values, click to select; clicks come back to Python as events.
 - Leapfrog-style layers dock, colour maps, display filters, slicer and sections, clip box,
-  vertical exaggeration, transparency that adds up, hole labels.
+  vertical exaggeration, transparency that adds up, maximum intensity projection, hole labels.
 - Reads DataFrames, CSV / Parquet / Excel tables, Leapfrog OMF (v1), Wavefront OBJ, and
   PyVista meshes, point clouds and grids (and turns layers back into PyVista objects).
 
@@ -35,13 +35,13 @@ source geoview-env/bin/activate       # macOS / Linux
 number for other releases):
 
 ```bash
-pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.7.0/geoview-0.7.0-py3-none-any.whl"
+pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.8.0/geoview-0.8.0-py3-none-any.whl"
 ```
 
 `[textures]` adds Pillow, needed only for photo-textured meshes; `[pyvista]` adds PyVista,
 for sending layers back to PyVista (`geoview[textures,pyvista]` for both). Leave out what you
 don't need. Without internet access, download the `.whl` file from the release page and run
-`pip install geoview-0.7.0-py3-none-any.whl` in its folder.
+`pip install geoview-0.8.0-py3-none-any.whl` in its folder.
 
 **3. Install a notebook front end**, if you don't have one:
 
@@ -245,6 +245,27 @@ v.z_scale = 2
 v.remove("collars")
 v.fit()
 ```
+
+### Maximum intensity projection
+
+`v.set(name, blend="max")` (or `"mip"`; Blending → *Maximum intensity (MIP)* in the
+properties panel) draws the layer so that the **highest value along each line of sight
+shows, wherever it is**: a dense cloud of composites or a
+block model becomes an "X-ray plunge projection" (Cowan 2014) where high-grade trends show
+through everything in front of them. `blend="min"` shows the lowest values instead.
+
+- The order follows the colour: a number's place in the colour range (so the range slider
+  sets both colour and priority), a category's place in the legend (the first on top).
+  Missing values go to the back.
+- A projection layer is drawn over the other layers, like an overlay; clicks and hover
+  report the record that shows (the maximum under the cursor).
+- The slicer and clip box still apply: a slab gives the projection of just that slab.
+  Display filters apply too.
+- Works for blocks (buried blocks included), points, drillholes (tubes or lines) and
+  surfaces (faces only).
+
+Technique as in PyVista's `Actor.enable_maximum_intensity_projection`: each vertex's depth
+is replaced by its normalised value, so the depth test compares values, not distances.
 
 ## Coordinates
 
