@@ -8,8 +8,9 @@
 
 Interactive 3D viewer for geology data in Python: block models, drillholes, surfaces and
 solids, points, and photo-textured meshes (e.g. core-tray photos). One Python API drives a
-fast browser renderer (three.js / WebGL), in Jupyter or VS Code notebooks, or as a single
-self-contained HTML file that anyone can open without Python.
+fast browser renderer (three.js / WebGL), in Jupyter or VS Code notebooks, Streamlit apps, a desktop
+window (`geoview open model.omf`), or a single self-contained HTML file that anyone can open
+without Python.
 
 - Millions of blocks stay smooth (GPU instancing; hidden blocks are skipped).
 - Hover for values, click to select; clicks come back to Python as events.
@@ -35,13 +36,13 @@ source geoview-env/bin/activate       # macOS / Linux
 number for other releases):
 
 ```bash
-pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.8.0/geoview-0.8.0-py3-none-any.whl"
+pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.9.0/geoview-0.9.0-py3-none-any.whl"
 ```
 
 `[textures]` adds Pillow, needed only for photo-textured meshes; `[pyvista]` adds PyVista,
 for sending layers back to PyVista (`geoview[textures,pyvista]` for both). Leave out what you
 don't need. Without internet access, download the `.whl` file from the release page and run
-`pip install geoview-0.8.0-py3-none-any.whl` in its folder.
+`pip install geoview-0.9.0-py3-none-any.whl` in its folder.
 
 **3. Install a notebook front end**, if you don't have one:
 
@@ -88,6 +89,20 @@ bm = BlockModel.from_dataframe(df, xyz=("XC", "YC", "ZC"), size=(10, 10, 5))
 sub = BlockModel.from_dataframe(df, size=("XINC", "YINC", "ZINC"))   # sub-blocks: per-block sizes
 pts = Points.from_dataframe(samples, size=5)             # spheres of 5 m
 bm.subset(bm.attributes["CU"] >= 0.3)                    # filter before sending: the cheapest speed-up
+```
+
+#### Rotated block models
+
+A model rotated in its own frame (with a bearing, dip or plunge) takes `rotation=R`: a 3x3
+matrix whose **columns** are the model's own X, Y and Z axes in real coordinates. Centroids stay
+in real coordinates; sizes are along the model's axes. Blocks are drawn turned, and clicking and
+the slicer follow the rotation.
+
+```python
+import numpy as np
+a = np.radians(90 - 40)                     # e.g. a model whose X axis points to azimuth 40
+R = np.array([[np.cos(a), -np.sin(a), 0], [np.sin(a), np.cos(a), 0], [0, 0, 1]])
+v.add(BlockModel.from_dataframe(df, size=(20, 20, 16), rotation=R), "bm")
 ```
 
 ### Drillholes
@@ -152,7 +167,7 @@ surf.to_pyvista()                              # Surface / Points -> PolyData; D
 Layers colour by the mesh's active scalars, as PyVista plots them. Strings and booleans
 become categories; vectors split into `_x`/`_y`/`_z`. Empty cells (all NaN) and blanked
 cells are dropped (`from_pyvista(grid, omit_empty=False)` keeps the NaN ones). Rotated grids
-are placed correctly but drawn axis-aligned (a warning says so). About 0.3 s per million
+are drawn rotated (see *Rotated block models*). About 0.3 s per million
 cells either way. `to_pyvista` needs PyVista installed (`pip install "geoview[pyvista]"`).
 
 ### Leapfrog OMF
@@ -173,8 +188,8 @@ for name, layer in read_omf("model.omf").items():
 | volume (block model) | `BlockModel` (empty cells dropped; `omit_empty=False` keeps them) |
 
 Data comes along as attributes; legend (mapped) data becomes categories with the legend's
-colours. `elements=[...]` reads only some elements. Rotated block models are placed
-correctly but drawn axis-aligned (a warning says so). OMF v2 files are not read yet.
+colours. `elements=[...]` reads only some elements. Rotated block models are drawn
+rotated. OMF v2 files are not read yet.
 
 ### Photo-textured meshes
 
@@ -266,6 +281,38 @@ through everything in front of them. `blend="min"` shows the lowest values inste
 
 Technique as in PyVista's `Actor.enable_maximum_intensity_projection`: each vertex's depth
 is replaced by its normalised value, so the depth test compares values, not distances.
+
+## Streamlit apps
+
+```python
+import streamlit as st
+from geoview import Viewer, BlockModel
+from geoview.streamlit import geoview_chart     # pip install "geoview[streamlit]"
+
+v = Viewer(height=650)
+v.add(BlockModel.from_dataframe(df, size=10), "bm", color_by="CU")
+sel = geoview_chart(v, key="3d")                # the record last clicked, or None
+if sel:
+    st.json(sel.record)
+```
+
+Everything in the view works (slicer, filters, transparency, Z scale); a click reruns the app
+and returns a `Selection` (`layer`, `index`, `record`). While the scene is unchanged between
+reruns the view keeps its camera. The scene travels with the page, as in `to_html`, and
+Streamlit caps one message at 200 MB by default (`server.maxMessageSize`), so filter very large
+models in Python first. Loading files belongs to the app (`st.file_uploader`), not the view.
+Example: `streamlit run examples/streamlit_app.py`.
+
+## Desktop window
+
+```bash
+geoview open model.omf                          # its own window: pip install "geoview[desktop]"
+geoview open collars.csv surveys.csv assays.csv # tables read together, as the Load button does
+geoview open blocks.parquet --browser           # the default browser instead
+geoview open model.omf --html model.html        # only write the self-contained page
+```
+
+`python -m geoview.cli open ...` does the same where the `geoview` command is not on the PATH.
 
 ## Coordinates
 
