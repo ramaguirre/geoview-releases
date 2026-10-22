@@ -36,13 +36,13 @@ source geoview-env/bin/activate       # macOS / Linux
 number for other releases):
 
 ```bash
-pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.11.0/geoview-0.11.0-py3-none-any.whl"
+pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.12.0/geoview-0.12.0-py3-none-any.whl"
 ```
 
 `[textures]` adds Pillow, needed only for photo-textured meshes; `[pyvista]` adds PyVista,
 for sending layers back to PyVista (`geoview[textures,pyvista]` for both). Leave out what you
 don't need. Without internet access, download the `.whl` file from the release page and run
-`pip install geoview-0.11.0-py3-none-any.whl` in its folder.
+`pip install geoview-0.12.0-py3-none-any.whl` in its folder.
 
 **3. Install a notebook front end**, if you don't have one:
 
@@ -262,6 +262,7 @@ v.set("assays", filter={"attribute": "CU", "range": (0.4, 5)})         # display
 v.set("blocks", filter={"attribute": "LITH", "include": ["Porphyry"]})
 v.set("blocks", opacity=0.12, blend="accumulate")    # opacity adds up with depth, like a cloud
 v.set("assays", labels=True, display="lines")
+v.set("collars", display="circles", point_px=8)     # points as flat discs that keep their pixel size when zooming
 v.section(45, thickness=40)                          # vertical 40 m slab trending 045, face-on
 v.slice(line=[(x1, y1), (x2, y2)], thickness=40)     # vertical section through two map points
 v.slice(dip=0, through=(x, y, 2100))                 # horizontal cut
@@ -335,7 +336,7 @@ A local page that is the 3D view and nothing else. **Load** opens a file window 
 computer; files are read where they are (an OBJ finds its `.mtl` and photos beside it). A
 small pop-up asks only when a choice is needed: tables that look like drillhole data (the dip
 direction is detected and checked), or photo meshes (size, grouped or one layer each).
-Progress and **Messages** (files that were skipped, and why) are in the view. Loaded files
+Progress is a task list in the view (click the bar: reading, files appearing in the list, preparing photos, receiving and uploading to the GPU, each with its own bar), with **Messages** (files that were skipped, and why). Any text file is read as a table whatever its extension (`.asc`, `.dat`, `.xyz`...), with spaces, semicolons or tabs as delimiters and decimal commas; an ESRI ASCII grid loads as a surface. **Import...** (and right-click > *Import as...* on a listed table) opens an import wizard: how the file is read (delimiter, decimal mark, encoding, header), what the table is (points, block model, collars, survey, intervals), which column is which, and each column's type (number, category, colour, ignore). The wizard can remember its settings for tables with the same columns. **Scene > Save scene... / Open scene...** saves everything loaded to one file and opens it again instantly, with nothing read or packed again. **Save HTML...** writes what is in the view as one page that opens in any browser (photo size and the current camera are options). A table of X/Y/Z positions can be loaded as points, and a table whose coordinate columns are not recognised offers column pickers. Loaded files
 are listed in the **Files** panel and nothing is drawn until you choose it: select (click,
 Ctrl or Shift-click), then right-click for View, Hide or Unload, drag onto the view, or
 double-click. Properties changes apply to every selected layer. Photo meshes loaded together
