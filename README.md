@@ -36,13 +36,13 @@ source geoview-env/bin/activate       # macOS / Linux
 number for other releases):
 
 ```bash
-pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.9.0/geoview-0.9.0-py3-none-any.whl"
+pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.11.0/geoview-0.11.0-py3-none-any.whl"
 ```
 
 `[textures]` adds Pillow, needed only for photo-textured meshes; `[pyvista]` adds PyVista,
 for sending layers back to PyVista (`geoview[textures,pyvista]` for both). Leave out what you
 don't need. Without internet access, download the `.whl` file from the release page and run
-`pip install geoview-0.9.0-py3-none-any.whl` in its folder.
+`pip install geoview-0.11.0-py3-none-any.whl` in its folder.
 
 **3. Install a notebook front end**, if you don't have one:
 
@@ -111,15 +111,18 @@ v.add(BlockModel.from_dataframe(df, size=(20, 20, 16), rotation=R), "bm")
 from geoview import Drillholes
 
 dh = Drillholes.from_tables(collars, surveys, assays, radius=3)  # desurveyed by minimum curvature
-traces = Drillholes.from_tables(collars)                          # collars only: straight traces
+traces = Drillholes.from_tables(collars)                          # collars with azimuth/dip: straight traces
 comp = Drillholes.from_points(df, at="mid")                       # one row per interval with its midpoint
 ```
 
 Column names are detected case-insensitively (HOLEID/BHID/DHID, FROM/TO, AT/DEPTH/DISTANCE,
 AZIMUTH/BRG, DIP, X/Y/Z...) or passed explicitly (`hole=`, `from_=`, `at=`, ...).
 Conventions: azimuth clockwise from grid north; **dip negative downwards** (-90 = vertical),
-or pass `dip_positive_down=True`. A hole without survey rows uses the collar's azimuth and
-dip, else it is vertical.
+or pass `dip_positive_down=True`. A hole without survey rows uses the collar's own azimuth and
+dip. Holes that cannot be placed are **left out and reported, never guessed**: a hole with no survey and no azimuth/dip
+is not assumed vertical, and a hole with two survey rows at the same depth is not desurveyed unless you choose a
+rule (`duplicates="first"`, `"last"` or a function). A warning says how many were left out; `layer.skipped` lists
+them and `check_tables(collars, surveys, intervals)` returns every problem as a table.
 
 ### Surfaces and solids
 
@@ -209,6 +212,13 @@ The limit is GPU memory: width × height × 4 bytes per photo, whatever the JPEG
 guide, on a laptop with integrated graphics, about 9,400 photos of 444 × 279 px load in about
 5 s at half size (1.9 GB of GPU memory), and around 5,000 at full size (4.4 GB). Very large
 photo sets at full size are too big for a single HTML file: use half size, or a selection.
+When a layer needs more photo pages than the GPU budget (160 pages, about 3.5 GB), geoview
+shrinks the photos by itself and says so in the view, instead of showing none.
+
+`geoview open surface.obj` (or `geoview app`) reads an OBJ with its `.mtl` and photos from
+its own folder; `--texture-scale 0.5` shrinks them. Tables with a `#RRGGBB` column draw in
+those colours, and interval tables with start and end X/Y/Z columns draw without collars or
+surveys.
 
 ## In the view
 
@@ -224,6 +234,7 @@ photo sets at full size are too big for a single HTML file: use half size, or a 
 - **Load** (or drop a file on the view) reads CSV / TSV / Parquet / Excel tables (collars,
   surveys, intervals, block models, points, recognised by their columns), OMF and OBJ files,
   and adds them as layers. Needs a live notebook; the HTML export has no Load button.
+  `Viewer(load_button=False)` hides it (and file dropping) for apps that do not need it.
 
 ### Slicer and sections
 
@@ -314,6 +325,26 @@ geoview open model.omf --html model.html        # only write the self-contained 
 
 `python -m geoview.cli open ...` does the same where the `geoview` command is not on the PATH.
 
+### File app
+
+```bash
+geoview app                                     # pip install "geoview[streamlit]"
+```
+
+A local page that is the 3D view and nothing else. **Load** opens a file window on your
+computer; files are read where they are (an OBJ finds its `.mtl` and photos beside it). A
+small pop-up asks only when a choice is needed: tables that look like drillhole data (the dip
+direction is detected and checked), or photo meshes (size, grouped or one layer each).
+Progress and **Messages** (files that were skipped, and why) are in the view. Loaded files
+are listed in the **Files** panel and nothing is drawn until you choose it: select (click,
+Ctrl or Shift-click), then right-click for View, Hide or Unload, drag onto the view, or
+double-click. Properties changes apply to every selected layer. Photo meshes loaded together
+share one layer, each still shown or hidden on its own (display filter by *source*).
+
+Apps built on the same pieces use `geoview.Project`: `Project(Viewer()).load_paths([...])`
+loads files, `view(file)` and `hide(file)` choose what is drawn, and `can_pick = True` turns
+on the in-view Load button.
+
 ## Coordinates
 
 Real coordinates (e.g. UTM) stay in float64 in Python; the GPU only sees offsets from a
@@ -337,4 +368,5 @@ them into several layers.
 ## Licence
 
 MIT: free to use, modify and share, including commercially, as long as the licence
-notice is kept. See [LICENSE](LICENSE).
+notice is kept. See `LICENSE`. The 3D renderer is built on three.js (MIT); its notice is in
+`THIRD-PARTY-NOTICES.md`, which ships in the package.
