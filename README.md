@@ -36,13 +36,13 @@ source geoview-env/bin/activate       # macOS / Linux
 number for other releases):
 
 ```bash
-pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.13.0/geoview-0.13.0-py3-none-any.whl"
+pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.14.0/geoview-0.14.0-py3-none-any.whl"
 ```
 
 `[textures]` adds Pillow, needed only for photo-textured meshes; `[pyvista]` adds PyVista,
 for sending layers back to PyVista (`geoview[textures,pyvista]` for both). Leave out what you
 don't need. Without internet access, download the `.whl` file from the release page and run
-`pip install geoview-0.13.0-py3-none-any.whl` in its folder.
+`pip install geoview-0.14.0-py3-none-any.whl` in its folder.
 
 **3. Install a notebook front end**, if you don't have one:
 
@@ -293,6 +293,21 @@ through everything in front of them. `blend="min"` shows the lowest values inste
 
 Technique as in PyVista's `Actor.enable_maximum_intensity_projection`: each vertex's depth
 is replaced by its normalised value, so the depth test compares values, not distances.
+
+### Steps
+
+`v.steps(n)` adds a bar under the view for something that happens in order: play / pause, a slider
+for steps `0..n`, speed, and download as an animated GIF or a WebM video. Each layer says how it
+follows the slider:
+
+```python
+holes.show_from(order)                                  # record i appears at step order[i]
+blocks.step_events("category", records, steps, values)  # record r takes value v from step s on
+layer.step_frames("score", steps=[0, 10, 20], values=M) # the whole column at some steps
+v.steps(n, title="Step")
+```
+
+Colouring, filters, the legend and the info panel follow the slider; saved HTML pages and scene files keep it.
 
 ## Streamlit apps
 
