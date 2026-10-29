@@ -36,13 +36,13 @@ source geoview-env/bin/activate       # macOS / Linux
 number for other releases):
 
 ```bash
-pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.14.0/geoview-0.14.0-py3-none-any.whl"
+pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.15.0/geoview-0.15.0-py3-none-any.whl"
 ```
 
 `[textures]` adds Pillow, needed only for photo-textured meshes; `[pyvista]` adds PyVista,
 for sending layers back to PyVista (`geoview[textures,pyvista]` for both). Leave out what you
 don't need. Without internet access, download the `.whl` file from the release page and run
-`pip install geoview-0.14.0-py3-none-any.whl` in its folder.
+`pip install geoview-0.15.0-py3-none-any.whl` in its folder.
 
 **3. Install a notebook front end**, if you don't have one:
 
@@ -229,8 +229,16 @@ surveys.
 - **Layers dock** below the view: eye (show/hide), colour-by, colours, opacity, remove; the
   selected layer's properties on the right (colour map, range, categories, display filter,
   blending, display mode). Drag the divider to resize; the **Layers** button hides it.
-- **Toolbar**: Slice, Axes (coordinate labels), Z × (vertical exaggeration), projection
-  (orthographic by default), Layers, Fit, Load.
+- **Toolbar**: Slice, Measure, Axes (coordinate labels), Z × (vertical exaggeration),
+  projection (orthographic by default), Layers, Fit, Load. **Hide** (or the <kbd>\`</kbd> key)
+  tucks it into a faint "geoview *version*" watermark; click it to bring the toolbar back.
+- **View shortcuts** (ignored while typing in a field): **N/S/E/W** look from that side,
+  **U** from below, **D** is plan view; **L** looks at the slicer plane.
+- **Measure**: click points on any layer to draw a path. Each segment shows slope, horizontal
+  and X/Y/Z distance, azimuth (clockwise from grid north) and dip (negative downwards), in real
+  coordinates and true metres whatever the Z-scale. **Esc** stops the path, and again clears
+  it. Click, Shift+click or Ctrl+click segments to select some; the panel shows the selection
+  and the total. `v.on_measure(fn)` receives each measurement; nothing is saved.
 - **Load** (or drop a file on the view) reads CSV / TSV / Parquet / Excel tables (collars,
   surveys, intervals, block models, points, recognised by their columns), OMF and OBJ files,
   and adds them as layers. Needs a live notebook; the HTML export has no Load button.
@@ -243,6 +251,10 @@ surveys.
 facing you; plan; N–S or E–W section; custom dip/azimuth); follow the camera; position;
 thickness (0 = a cut); flip; **Look at plane** (Shift+click: from the opposite side); **Draw
 line** (click two points on the view).
+
+**View section** faces the plane square-on in orthographic and replaces the X/Y/Z axes with a
+ruler in the cut itself: distance along the section across, elevation up. **Export PNG…** saves
+the view at the pixel size you choose (the 3D scene, without the ruler text).
 
 Mouse, while a plane slicer is on: **Ctrl + right-drag** slides it; **middle-drag** or
 **Ctrl + left + right drag** sets its thickness.
