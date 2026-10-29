@@ -8,9 +8,10 @@
 
 Interactive 3D viewer for geology data in Python: block models, drillholes, surfaces and
 solids, points, and photo-textured meshes (e.g. core-tray photos). One Python API drives a
-fast browser renderer (three.js / WebGL), in Jupyter or VS Code notebooks, Streamlit apps, a desktop
-window (`geoview open model.omf`), or a single self-contained HTML file that anyone can open
-without Python.
+fast browser renderer (three.js / WebGL): as an **app in your browser** (`geoview app`, no
+programming needed), in Jupyter or VS Code notebooks, Streamlit apps, a desktop window
+(`geoview open model.omf`), or a single self-contained HTML file that anyone can open without
+Python.
 
 - Millions of blocks stay smooth (GPU instancing; hidden blocks are skipped).
 - Hover for values, click to select; clicks come back to Python as events.
@@ -19,44 +20,87 @@ without Python.
 - Reads DataFrames, CSV / Parquet / Excel tables, Leapfrog OMF (v1), Wavefront OBJ, and
   PyVista meshes, point clouds and grids (and turns layers back into PyVista objects).
 
-## Installation
+## Install and run the app
 
-You need **Python 3.11 or newer**. A virtual environment keeps geoview apart from your other
-packages (recommended, not required).
+Five steps, about five minutes. You need **Python 3.11 or newer** and an internet connection.
 
-**1. Create and activate an environment** (skip if you already have one):
+**1. Check Python.** Open a terminal (Windows: *PowerShell*; macOS: *Terminal*) and type:
+
+```bash
+python --version
+```
+
+It should say `Python 3.11` or higher. If it says "not found", install Python from
+[python.org](https://www.python.org/downloads/) (on Windows, tick *Add python.exe to PATH*).
+
+**2. Create an environment** (a folder, `geoview-env`, that keeps geoview apart from your other
+Python packages). In the folder where you want it:
 
 ```bash
 python -m venv geoview-env
+```
+
+Then switch it on. Do this again every time you open a new terminal:
+
+```bash
 geoview-env\Scripts\activate          # Windows
 source geoview-env/bin/activate       # macOS / Linux
 ```
 
-**2. Install geoview** (the link is the wheel file on the release page; change the version
-number for other releases):
+The prompt now starts with `(geoview-env)`.
+
+**3. Install geoview** with everything the app uses (one line):
 
 ```bash
-pip install "geoview[textures] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.15.0/geoview-0.15.0-py3-none-any.whl"
+pip install "geoview[app] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.16.0/geoview-0.16.0-py3-none-any.whl"
 ```
 
-`[textures]` adds Pillow, needed only for photo-textured meshes; `[pyvista]` adds PyVista,
-for sending layers back to PyVista (`geoview[textures,pyvista]` for both). Leave out what you
-don't need. Without internet access, download the `.whl` file from the release page and run
-`pip install geoview-0.15.0-py3-none-any.whl` in its folder.
-
-**3. Install a notebook front end**, if you don't have one:
+**4. Start the app:**
 
 ```bash
-pip install jupyterlab               # then run: jupyter lab
+geoview app
 ```
 
-or use VS Code with its Jupyter extension (`pip install ipykernel`, then pick this
-environment as the notebook's kernel).
+Your browser opens on the 3D view (address `http://localhost:8501`). Everything stays on your
+computer: nothing is uploaded anywhere. To stop the app, go back to the terminal and press
+**Ctrl+C**.
 
-**4. Check it works:** download `quickstart.ipynb` from the release page, open it, and run
-all cells. It uses built-in synthetic data, so it needs no files of your own.
+**5. Load something.** Click **Load** in the view and pick your files: drillhole tables
+(collars, surveys, intervals; select them together), block models (CSV / Parquet), Leapfrog
+OMF, OBJ or DXF. No data at hand? This writes four demo tables into the current folder, ready
+to load together:
 
-**Upgrading:** run the step 2 command with the new version's link and `--upgrade`.
+```bash
+python -c "from geoview import demo; c = demo.collars(); s = demo.surveys(c); c.to_csv('demo_collars.csv', index=False); s.to_csv('demo_surveys.csv', index=False); demo.assays(c, s).to_csv('demo_assays.csv', index=False); demo.block_model().to_csv('demo_blocks.csv', index=False)"
+```
+
+**If something goes wrong**
+
+| What you see | What to do |
+|---|---|
+| `geoview: command not found` / *not recognized* | the environment is not switched on (step 2), or your computer blocks small program launchers: run `python -m geoview.cli app` instead |
+| Windows: *running scripts is disabled on this system* (step 2) | skip switching on and call the environment's Python directly: `geoview-env\Scripts\python -m pip install ...` (step 3) and `geoview-env\Scripts\python -m geoview.cli app` (step 4) |
+| `pip: command not found` | use `python -m pip install ...` |
+| The browser does not open | open `http://localhost:8501` yourself (the terminal shows the address) |
+| Port already in use | `geoview app --port 8600` |
+
+**Upgrading** to a newer version: switch the environment on, then run step 3 with the new
+version's link from the [Releases page](https://github.com/ramaguirre/geoview-releases/releases)
+and `--upgrade` at the end.
+
+## Use it in a notebook
+
+The same viewer works as a widget in Jupyter or VS Code notebooks, with Python in control.
+
+1. Install a notebook front end in the same environment, if you don't have one:
+   `pip install jupyterlab` (then run `jupyter lab`), or use VS Code with its Jupyter
+   extension (`pip install ipykernel`, then pick this environment as the notebook's kernel).
+2. Download `quickstart.ipynb` from the Releases page, open it, and run all cells. It uses
+   built-in synthetic data, so it needs no files of your own.
+
+Only the viewer, without the app's extra packages: `pip install "geoview @ <link>"`.
+`[textures]` adds Pillow (photo-textured meshes), `[pyvista]` PyVista, `[dxf]` DXF reading,
+`[desktop]` a desktop window for `geoview open`; `[app]` is Streamlit plus Pillow and DXF.
 
 ## Quick start
 
@@ -285,6 +329,24 @@ v.remove("collars")
 v.fit()
 ```
 
+### Ask the user for a line (`edit_polyline`)
+
+For apps that need a line drawn in 3D (a section line, a fault trace...). geoview gives the
+vertices back to your code and keeps nothing; saving the line is your app's job.
+
+```python
+v.edit_polyline("fault trace")                     # a new line; vertices=(n, 3) real coordinates edits an existing one
+@v.on_polyline
+def changed(edit):                                 # after every change, and once more on Esc
+    print(edit.name, edit.change, edit.vertices)   # change: "add" | "move" | "delete" | "finish"
+    if edit.finished:
+        save_my_line(edit.vertices)                # (n, 3) float64, real coordinates
+v.stop_editing()                                   # end it from code
+```
+
+In the view: **click** on any object adds a vertex there; **drag** a vertex to move it (it keeps
+its depth); **Delete** or **right-click** removes the vertex under the pointer; **Esc** finishes.
+
 ### Maximum intensity projection
 
 `v.set(name, blend="max")` (or `"mip"`; Blending → *Maximum intensity (MIP)* in the
@@ -356,7 +418,7 @@ geoview open model.omf --html model.html        # only write the self-contained 
 ### File app
 
 ```bash
-geoview app                                     # pip install "geoview[streamlit]"
+geoview app                                     # pip install "geoview[app]" (see Install and run the app)
 ```
 
 A local page that is the 3D view and nothing else. **Load** opens a file window on your
