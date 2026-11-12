@@ -52,7 +52,7 @@ The prompt now starts with `(geoview-env)`.
 **3. Install geoview** with everything the app uses (one line):
 
 ```bash
-pip install "geoview[app] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.16.0/geoview-0.16.0-py3-none-any.whl"
+pip install "geoview[app] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.17.0/geoview-0.17.0-py3-none-any.whl"
 ```
 
 **4. Start the app:**
@@ -149,6 +149,12 @@ R = np.array([[np.cos(a), -np.sin(a), 0], [np.sin(a), np.cos(a), 0], [0, 0, 1]])
 v.add(BlockModel.from_dataframe(df, size=(20, 20, 16), rotation=R), "bm")
 ```
 
+Without a header, the bearing can be detected from the blocks themselves:
+`geoview.vulcan.detect_bearing(xyz, sizes)` finds the bearing at which every block sits on a
+regular grid (dip and plunge taken as 0). Block tables loaded with the Load button or the
+Import wizard (with block sizes) are checked this way and drawn turned when they fit a rotated
+grid; a Vulcan CSV loaded without its header opens a rotation dialog with that bearing filled in.
+
 ### Drillholes
 
 ```python
@@ -167,6 +173,20 @@ dip. Holes that cannot be placed are **left out and reported, never guessed**: a
 is not assumed vertical, and a hole with two survey rows at the same depth is not desurveyed unless you choose a
 rule (`duplicates="first"`, `"last"` or a function). A warning says how many were left out; `layer.skipped` lists
 them and `check_tables(collars, surveys, intervals)` returns every problem as a table.
+
+#### Drillhole sets (loading from the view)
+
+Drillhole tables loaded in the view go in **sets**, as in common geological modelling tools: one
+collar table, at most one survey table, and any number of interval tables (hole, from, to) and
+depth-point tables (hole and a depth: structures, samples). Each collar table starts a set; the
+other tables join the set whose collars hold most of their holes, so two drilling campaigns loaded
+together stay apart, in any order. A table whose set is unclear is not guessed: it waits in the
+Files panel with the reason. Right-click a table > **Move to set: ...** to reassign it, or
+**Import as...** to choose its set and say what each column is (role, type, unit). **Save
+drillhole set...** writes a small `.dhset.yaml` file beside the tables (what each table is and its
+columns, never data); loading that file opens the whole set again with no questions. From
+Python: `viewer.drillhole_sets()`, `viewer.move_drillhole_table(...)`,
+`viewer.save_drillhole_set(name, path)` and `viewer.open_drillhole_set(path)`.
 
 ### Surfaces and solids
 
@@ -237,6 +257,28 @@ for name, layer in read_omf("model.omf").items():
 Data comes along as attributes; legend (mapped) data becomes categories with the legend's
 colours. `elements=[...]` reads only some elements. Rotated block models are drawn
 rotated. OMF v2 files are not read yet.
+
+### AutoCAD DXF
+
+Needs the `[dxf]` extra.
+
+```python
+from geoview.dxf import read_dxf, read_dxf_polylines
+
+for name, layer in read_dxf("pit.dxf").items():       # layers=["PIT", ...] keeps some
+    v.add(layer, name)
+outlines = read_dxf_polylines("plan.dxf")             # one dict per polyline
+```
+
+`read_dxf` gives one geoview layer per DXF layer, in its DXF colour: faces (3DFACE, MESH,
+POLYFACE) become a `Surface`, LINE and polylines become lines with a `line` number per
+polyline. `read_dxf_polylines` gives each LWPOLYLINE and 2D/3D POLYLINE on its own, for polygon
+work: `vertices` ((n, 3) float64, real coordinates; an LWPOLYLINE's elevation is its z),
+`layer`, `closed` (closed flag, or first point equal to last, the repeat dropped) and `handle`
+(for polylines inside a block, the INSERT's handle). Both expand blocks (INSERT); arcs in
+polylines (bulges) are read as straight chords; circles, text and hatches are skipped. A
+surface's `vertices` (n, 3) and `triangles` (m, 3) are plain numpy arrays, usable without
+geoview.
 
 ### Photo-textured meshes
 
@@ -383,6 +425,36 @@ v.steps(n, title="Step")
 
 Colouring, filters, the legend and the info panel follow the slider; saved HTML pages and scene files keep it.
 
+## Local server: your own app around the view
+
+For an app of your own, with no notebook and no Streamlit: `serve` shows a viewer in a browser tab on this computer, live
+both ways, with a column on the left for your own controls.
+
+```python
+from geoview import Viewer, BlockModel
+from geoview.server import serve
+
+PANEL = """
+<button id="n">How many layers?</button> <span id="out"></span>
+<script>
+  document.getElementById("n").onclick = async () => {
+    document.getElementById("out").textContent = await geoview.call("count");   // runs the Python handler
+  };
+</script>"""
+
+v = Viewer()
+v.add(BlockModel.from_dataframe(df, size=10), "bm", color_by="CU")
+v.on_select(lambda sel: print(sel))           # on_measure, on_polyline, edit_polyline... all work, as in a notebook
+server = serve(v, panel=PANEL)                # opens http://127.0.0.1:PORT/ in the browser
+server.on("count", lambda: len(v.layers))     # what geoview.call("count") gets back
+server.push("status", {"text": "ready"})      # to every open tab's geoview.on("status", fn)
+server.wait()                                 # until Ctrl+C (in a notebook, leave this out)
+```
+
+The panel's scripts get `window.geoview`: `call(name, ...args)` (a Promise of the Python handler's result), `on(topic, fn)`
+(for `server.push`) and `viewer` (the view). Several tabs and reloads work: each gets the whole scene. It listens on 127.0.0.1
+only and refuses requests from other web sites. Ctrl+C stops it. It needs `websockets`, installed with geoview.
+
 ## Streamlit apps
 
 ```python
@@ -425,7 +497,7 @@ A local page that is the 3D view and nothing else. **Load** opens a file window 
 computer; files are read where they are (an OBJ finds its `.mtl` and photos beside it). A
 small pop-up asks only when a choice is needed: tables that look like drillhole data (the dip
 direction is detected and checked), or photo meshes (size, grouped or one layer each).
-Progress is a task list in the view (click the bar: reading, files appearing in the list, preparing photos, receiving and uploading to the GPU, each with its own bar), with **Messages** (files that were skipped, and why). Any text file is read as a table whatever its extension (`.asc`, `.dat`, `.xyz`...), with spaces, semicolons or tabs as delimiters and decimal commas; an ESRI ASCII grid loads as a surface. **Import...** (and right-click > *Import as...* on a listed table) opens an import wizard: how the file is read (delimiter, decimal mark, encoding, header), what the table is (points, block model, collars, survey, intervals), which column is which, and each column's type (number, category, colour, ignore). The wizard can remember its settings for tables with the same columns. **Scene > Save scene... / Open scene...** saves everything loaded to one file and opens it again instantly, with nothing read or packed again. Every saved page also opens scene files dropped on it (`geoview viewer page.html` writes an empty one), so a colleague needs no Python. **Save HTML...** writes what is in the view as one page that opens in any browser (photo size and the current camera are options). A table of X/Y/Z positions can be loaded as points, and a table whose coordinate columns are not recognised offers column pickers. Loaded files
+Progress is a task list in the view (click the bar: reading, files appearing in the list, preparing photos, receiving and uploading to the GPU, each with its own bar), with **Messages** (files that were skipped, and why). Any text file is read as a table whatever its extension (`.asc`, `.dat`, `.xyz`...), with spaces, semicolons or tabs as delimiters and decimal commas; an ESRI ASCII grid loads as a surface. **Import...** (and right-click > *Import as...* on a listed table) opens an import wizard: how the file is read (delimiter, decimal mark, encoding, header), what the table is (points, block model, collars, survey, intervals, points along holes), which column is which, and each column's type (number, category, text, date, colour, ignore) and unit, with the columns it is unsure about marked. The wizard can remember its settings for tables with the same columns. **Scene > Save scene... / Open scene...** saves everything loaded to one file and opens it again instantly, with nothing read or packed again. Every saved page also opens scene files dropped on it (`geoview viewer page.html` writes an empty one), so a colleague needs no Python. **Save HTML...** writes what is in the view as one page that opens in any browser (photo size and the current camera are options). A table of X/Y/Z positions can be loaded as points, and a table whose coordinate columns are not recognised offers column pickers. Loaded files
 are listed in the **Files** panel and nothing is drawn until you choose it: select (click,
 Ctrl or Shift-click), then right-click for View, Hide or Unload, drag onto the view, or
 double-click. Properties changes apply to every selected layer. Photo meshes loaded together
