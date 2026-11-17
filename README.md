@@ -52,7 +52,7 @@ The prompt now starts with `(geoview-env)`.
 **3. Install geoview** with everything the app uses (one line):
 
 ```bash
-pip install "geoview[app] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.17.0/geoview-0.17.0-py3-none-any.whl"
+pip install "geoview[app] @ https://github.com/ramaguirre/geoview-releases/releases/download/v0.18.0/geoview-0.18.0-py3-none-any.whl"
 ```
 
 **4. Start the app:**
@@ -356,9 +356,11 @@ be drawn as **lines** instead of tubes.
 v.set("collars", visible=False)
 v.set("Cu > 0.2", color_by="LITH")
 v.set("blocks", range=(0.2, 1.0), cmap="turbo")
+v.set("structure", color_by="AZIMUTH", cmap="cet_cyclic")  # also cet_diverging (signed values), cet_rainbow
 v.set("assays", filter={"attribute": "CU", "range": (0.4, 5)})         # display filter
 v.set("blocks", filter={"attribute": "LITH", "include": ["Porphyry"]})
 v.set("blocks", opacity=0.12, blend="accumulate")    # opacity adds up with depth, like a cloud
+v.set("wall", opacity=0.4)                           # see-through: such layers are drawn far to near, so they show each other
 v.set("assays", labels=True, display="lines")
 v.set("collars", display="circles", point_px=8)     # points as flat discs that keep their pixel size when zooming
 v.section(45, thickness=40)                          # vertical 40 m slab trending 045, face-on
@@ -386,8 +388,17 @@ def changed(edit):                                 # after every change, and onc
 v.stop_editing()                                   # end it from code
 ```
 
-In the view: **click** on any object adds a vertex there; **drag** a vertex to move it (it keeps
+In the view: **click** on any object adds a vertex there (exactly under the pointer on a surface, at that depth on a
+drillhole; at the centre of a block or point); **drag** a vertex to move it (it keeps
 its depth); **Delete** or **right-click** removes the vertex under the pointer; **Esc** finishes.
+
+`v.edit_polyline(name, curve=True)` makes the line a smooth Bezier curve through its vertices, with handles to drag
+(`edit.controls`, (n, 2, 3)); `sides=True` adds a normal per vertex, drawn as an arrow and a two-colour ribbon, that
+the user can turn or flip with **F** (`edit.normals`, (n, 3)), for lines whose two sides mean something.
+
+To keep a curve with its handles and sides, geomodeltools 0.10 or later can hold it: `Polyline.from_edit(edit)`, then
+`write_omf` (other software sees the curve's shape; `read_omf` gives back the editable line, which
+`v.edit_polyline(name, vertices=..., curve=True, controls=..., sides=True, normals=...)` reopens).
 
 ### Maximum intensity projection
 
